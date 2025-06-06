@@ -1,0 +1,231 @@
+//Problema heap - complete;
+
+#define _CRT_SECURE_NO_WARNINGS
+#define LINESIZE 128
+
+#include<stdio.h>
+#include<string.h>
+#include<malloc.h>
+#include<stdlib.h>
+
+typedef struct CursaAvioan {
+	char* cod;
+	char* destinatie;
+	char* dataPlecare;
+	char* oraPlecare;
+	short int minIntarziate;
+}Cursa;
+
+typedef struct Heap {
+	int size;
+	Cursa* curse;
+}Heap;
+
+void swapCurse(Cursa* c1, Cursa* c2) {
+	Cursa aux = *c1;
+	*c1 = *c2;
+	*c2 = aux;
+}
+
+Cursa initCursa(char* cod, char* destinatie, char* dataPlecare, char* oraPlecare, short int minINtarziate) {
+	Cursa cursa;
+
+	cursa.cod = malloc((strlen(cod) + 1) * sizeof(char));
+	strcpy(cursa.cod, cod);
+
+	cursa.destinatie = malloc((strlen(destinatie) + 1) * sizeof(char));
+	strcpy(cursa.destinatie, destinatie);
+
+	cursa.dataPlecare = malloc((strlen(dataPlecare) + 1) * sizeof(char));
+	strcpy(cursa.dataPlecare, dataPlecare);
+
+	cursa.oraPlecare = malloc((strlen(oraPlecare) + 1) * sizeof(char));
+	strcpy(cursa.oraPlecare, oraPlecare);
+
+	cursa.minIntarziate = minINtarziate;
+
+	return cursa;
+}
+
+Heap initHeap() {
+	Heap heap;
+	heap.size = 0;
+	heap.curse = NULL;
+
+	return heap;
+}
+
+void insertInHeap(Heap* heap, Cursa cursa) {
+	heap->size += 1;
+	heap->curse = realloc(heap->curse, heap->size * sizeof(Cursa));
+
+	int element_index = heap->size - 1;
+	heap->curse[element_index] = cursa;
+
+	int parinte_index = (element_index - 1) / 2;
+	while (heap->curse[element_index].minIntarziate > heap->curse[parinte_index].minIntarziate) {
+		swapCurse(&heap->curse[element_index], &heap->curse[parinte_index]);
+		element_index = parinte_index;
+		parinte_index = (element_index - 1) / 2;
+	}
+}
+
+Cursa readCursa(FILE* f) {
+	Cursa cursa;
+	char buffer[LINESIZE];
+	fgets(buffer, LINESIZE, f);
+
+	char* token = strtok(buffer, ",");
+	cursa.cod = malloc((strlen(token) + 1) * sizeof(char));
+	strcpy(cursa.cod, token);
+
+	token = strtok(NULL, ",");
+	cursa.destinatie = malloc((strlen(token) + 1) * sizeof(char));
+	strcpy(cursa.destinatie, token);
+
+	token = strtok(NULL, ",");
+	cursa.dataPlecare = malloc((strlen(token) + 1) * sizeof(char));
+	strcpy(cursa.dataPlecare, token);
+
+	token = strtok(NULL, ",");
+	cursa.oraPlecare = malloc((strlen(token) + 1) * sizeof(char));
+	strcpy(cursa.oraPlecare, token);
+
+	token = strtok(NULL, ",");
+	cursa.minIntarziate = atoi(token);
+
+	return cursa;
+}
+
+void readCurse(const char* filename, Heap* heap) {
+	FILE* f;
+	f = fopen(filename, "r");
+
+	while (!feof(f)) {
+		insertInHeap(heap, readCursa(f));
+	}
+
+	fclose(f);
+}
+
+void printCursa(Cursa cursa) {
+	printf("%s %s %s %s %d\n", cursa.cod, cursa.destinatie, cursa.dataPlecare, cursa.oraPlecare, cursa.minIntarziate);
+}
+
+void printHeap(Heap heap) {
+	for (int i = 0;i < heap.size;i++) {
+		printf("%s (%d)    ", heap.curse[i].cod, heap.curse[i].minIntarziate);
+	}
+}
+int nrCurseCuIntarziere(Heap heap, const int* intarziere) {
+	int ct = 0;
+
+	for (int i = 0;i < heap.size; i++) {
+		if (heap.curse[i].minIntarziate < intarziere)
+			ct++;
+	}
+	return ct;
+}
+
+
+void heapify(Heap* heap, int index) {
+	int max = index;
+	int left = index * 2 + 1;
+	int right = index * 2 + 2;
+
+	if (left<heap->size && heap->curse[left].minIntarziate > heap->curse[max].minIntarziate)
+		max = left;
+
+	if (right<heap->size && heap->curse[right].minIntarziate > heap->curse[max].minIntarziate)
+		max = right;
+
+	if (max != index) {
+		swapCurse(&heap->curse[max], &heap->curse[index]);
+		heapify(heap, max);
+	}
+}
+void stergereDinHeap(Heap* heap, const char* dataComparata) {
+	int i = 0;
+
+	while (i < heap->size) {
+		if (strcmp(heap->curse[i].dataPlecare, dataComparata) < 0) {
+			free(heap->curse[i].cod);
+			free(heap->curse[i].destinatie);
+			free(heap->curse[i].dataPlecare);
+			free(heap->curse[i].oraPlecare);
+
+			heap->curse[i] = heap->curse[heap->size - 1];
+			heap->size--;
+			heapify(heap, i);
+		}
+		else i++;
+	}
+
+}
+Cursa* salvareCurseInVector(Heap heap, const char* dataLimita, int* nrCurseVector) {
+	Cursa* rezultat = NULL;
+	*nrCurseVector = 0;
+
+	for (int i = 0;i < heap.size;i++) {
+		if (strcmp(heap.curse[i].dataPlecare, dataLimita) < 0) {
+			rezultat = realloc(rezultat, (*nrCurseVector + 1) * sizeof(Cursa));
+			rezultat[*nrCurseVector] = initCursa(
+				heap.curse[i].cod,
+				heap.curse[i].destinatie,
+				heap.curse[i].dataPlecare,
+				heap.curse[i].oraPlecare,
+				heap.curse[i].minIntarziate
+			);
+			(*nrCurseVector)++;
+		}
+	}
+	return rezultat;
+}
+
+int main() {
+	Heap heap = initHeap();
+	readCurse("curse.txt", &heap);
+	printHeap(heap);
+
+	printf("\n-----------------------------------------------------------\n");
+	for (int i = 0;i < heap.size;i++) {
+		printCursa(heap.curse[i]);
+	}
+	printf("\n-----------------------------------------------------------\n");
+	int nrCurseVector = 0;
+	Cursa* curseFiltrate = salvareCurseInVector(heap, "2025-06-01", &nrCurseVector);
+
+	printf("Cursele cu plecare inainte de 01 iunie: \n");
+	for (int i = 0;i < nrCurseVector;i++) {
+		printCursa(curseFiltrate[i]);
+	}
+
+	for (int i = 0; i < nrCurseVector; i++) {
+		free(curseFiltrate[i].cod);
+		free(curseFiltrate[i].destinatie);
+		free(curseFiltrate[i].dataPlecare);
+		free(curseFiltrate[i].oraPlecare);
+	}
+	free(curseFiltrate);
+
+	printf("\n-----------------------------------------------------------\n");
+
+	int prag = 10;
+	int nrCurse = nrCurseCuIntarziere(heap, prag);
+	printf("Nr curse cu intarziere mai mica de 10 min= %d \n", nrCurse);
+	printf("\n-----------------------------------------------------------\n");
+	stergereDinHeap(&heap, "2025-06-01");
+	printHeap(heap);
+	printf("\n-----------------------------------------------------------\n");
+}
+/*curse.txt
+C1,New York,2025-05-30,15:30,5
+C2,Bucuresti,2025-06-01,09:45,15
+C3,Londra,2025-05-25,11:00,10
+C4,Paris,2025-05-28,19:00,2
+C5,Berlin,2025-05-29,21:15,20
+C6,Tokyo,2025-06-02,13:45,25
+C7,Madrid,2025-05-27,17:30,8
+C8,Barcelona,2025-05-26,14:00,12
+C9,Roma,2025-05-31,10:15,0
+C10,Praga,2025-06-03,08:00,18 */
